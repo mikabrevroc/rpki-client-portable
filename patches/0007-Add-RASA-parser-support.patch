@@ -1,0 +1,35 @@
+--- a/openbsd/src/usr.sbin/rpki-client/parser.c
++++ b/openbsd/src/usr.sbin/rpki-client/parser.c
+@@ -854,6 +854,7 @@ parse_entity(struct entityq *q, struct ibufqueue *msgq, X509_STORE_CTX *ctx,
+ 	struct tak	*tak;
+ 	struct spl	*spl;
++	struct rasa	*rasa;
+ 	struct ibuf	*b;
+ 	unsigned char	*f;
+ 	time_t		 mtime, crlmtime;
+@@ -1004,6 +1005,44 @@ parse_entity(struct entityq *q, struct ibufqueue *msgq, X509_STORE_CTX *ctx,
+ 		}
+ 		spl_free(spl);
+ 		break;
++	case RTYPE_RASA:
++		file = parse_load_file(entp, &f, &flen);
++		io_str_buffer(b, file);
++		if (experimental) {
++			rasa = proc_parser_rasa(file, f, flen, entp, ctx);
++			if (rasa != NULL)
++				mtime = rasa->signtime;
++		} else {
++			if (verbose > 0)
++				warnx("%s: skipped", file);
++			rasa = NULL;
++		}
++		io_simple_buffer(b, &mtime, sizeof(mtime));
++		c = (rasa != NULL);
++		io_simple_buffer(b, &c, sizeof(int));
++		if (rasa != NULL)
++			rasa_buffer(b, rasa);
++		rasa_free(rasa);
++		break;
+ 	case RTYPE_CRL:
+ 	default:
+ 		file = parse_filepath(entp->repoid, entp->path,

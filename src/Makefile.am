@@ -61,6 +61,7 @@ rpki_client_SOURCES += print.c
 rpki_client_SOURCES += repo.c
 rpki_client_SOURCES += rfc3779.c
 rpki_client_SOURCES += roa.c
+rpki_client_SOURCES += rasa.c
 rpki_client_SOURCES += rrdp.c
 rpki_client_SOURCES += rrdp_delta.c
 rpki_client_SOURCES += rrdp_notification.c
