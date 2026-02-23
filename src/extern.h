@@ -582,6 +582,7 @@ struct validation_data {
 	struct vap_tree	vaps;
 	struct vsp_tree	vsps;
 	struct vrp_rasa_tree	vrasas;
+	struct vrp_rasa_set_tree	vrasa_sets;
 	struct nca_tree ncas;
 	struct ccr ccr;
 };
@@ -740,6 +741,11 @@ struct repotalstats {
 	uint32_t	 rasas_invalid; /* RASAs with invalid resources */
 	uint32_t	 vrasas; /* total number of Validated RASA Payloads */
 	uint32_t	 vrasas_uniqs; /* number of unique vrasas */
+	uint32_t	 rasa_sets; /* RASA-SET objects */
+	uint32_t	 rasa_sets_fail; /* RASA-SET objects failing syntactic parse */
+	uint32_t	 rasa_sets_invalid; /* RASA-SETs with invalid resources */
+	uint32_t	 vrasa_sets; /* total number of Validated RASA-SET Payloads */
+	uint32_t	 vrasa_sets_uniqs; /* number of unique vrasa_sets */
 };
 
 struct repostats {
