@@ -24,14 +24,17 @@
 /* Maximum number of authorized AS-SET entries per RASA object. */
 #define MAX_RASA_ENTRIES 1000
 
-/* RASA authorization entry structure */
+/* Maximum number of members per RASA-SET object. */
+#define MAX_RASA_SET_MEMBERS 10000
+
+/* RASA authorization entry structure (for RASA-AUTH) */
 struct rasa_entry {
 	char		*asset;		/* AS-SET name */
 	int		propagation;	/* propagation scope (0=unrestricted, 1=directOnly) */
 };
 
 /*
- * A single RASA (RPKI AS-SET Authorization) record
+ * RASA-AUTH: AS declares authorization to be in AS-SETs
  */
 struct rasa {
 	int		 valid;	/* contained in issuer auth */
@@ -48,25 +51,68 @@ struct rasa {
 };
 
 /*
+ * RASA-SET: AS-SET declares its member ASes
+ */
+struct rasa_set_member {
+	uint32_t	asid;		/* Member AS number */
+	int		propagation;	/* Propagation scope */
+};
+
+struct rasa_set {
+	int		valid;		/* Validated */
+	int		talid;		/* TAL ID */
+	char		*as_set_name;	/* AS-SET name */
+	uint32_t	containing_as;	/* AS that owns this AS-SET */
+	struct rasa_set_member *members;	/* Member ASes */
+	size_t		num_members;	/* Number of members */
+	char		**nested_sets;	/* Nested AS-SET names */
+	size_t		num_nested;	/* Number of nested sets */
+	char		*irr_source;	/* IRR source (optional) */
+	ASN1_BIT_STRING	*flags;		/* Flags (doNotInherit, authoritative) */
+	time_t		signtime;	/* CMS signing time */
+	time_t		expires;	/* Expiration */
+	time_t		notbefore;	/* Validity start */
+	time_t		notafter;	/* Validity end */
+};
+
+/*
  * A Validated RASA Payload tree element.
  */
 struct vrp_rasa {
 	RB_ENTRY(vrp_rasa)	 entry;
-	uint32_t		 asid;		/* authorized AS (if applicable) */
-	char			*asset;		/* authorized AS-SET (if applicable) */
-	int			 is_asid;	/* true if ASID, false if AS-SET */
+	uint32_t	 asid;		/* authorized AS (if applicable) */
+	char		*asset;		/* authorized AS-SET (if applicable) */
+	int		 is_asid;	/* true if ASID, false if AS-SET */
 	struct rasa_entry	*entries;	/* authorized AS-SET entries */
-	size_t			 num_entries;
-	time_t			 expires;
-	int			 talid;
-	unsigned int		 repoid;
+	size_t		 num_entries;
+	time_t		 expires;
+	int		 talid;
+	unsigned int	 repoid;
+};
+
+/*
+ * A Validated RASA-SET tree element.
+ */
+struct vrp_rasa_set {
+	RB_ENTRY(vrp_rasa_set)	 entry;
+	char		*as_set_name;	/* AS-SET name */
+	uint32_t	 containing_as;	/* Owning AS */
+	struct rasa_set_member	*members;	/* Member ASes */
+	size_t		 num_members;
+	time_t		 expires;
+	int		 talid;
+	unsigned int	 repoid;
 };
 
 /* Tree of validated RASA payloads sorted by asid/asset */
 RB_HEAD(vrp_rasa_tree, vrp_rasa);
 RB_PROTOTYPE(vrp_rasa_tree, vrp_rasa, entry, vrp_rasa_cmp);
 
-/* Function prototypes */
+/* Tree of validated RASA-SET payloads sorted by AS-SET name */
+RB_HEAD(vrp_rasa_set_tree, vrp_rasa_set);
+RB_PROTOTYPE(vrp_rasa_set_tree, vrp_rasa_set, entry, vrp_rasa_set_cmp);
+
+/* Function prototypes for RASA-AUTH */
 void		 rasa_free(struct rasa *);
 void		 rasa_buffer(struct ibuf *, const struct rasa *);
 struct rasa	*rasa_parse(struct cert **, const char *, int,
@@ -74,5 +120,14 @@ struct rasa	*rasa_parse(struct cert **, const char *, int,
 struct rasa	*rasa_read(struct ibuf *);
 void		 rasa_insert_vrp_rasas(char *, struct vrp_rasa_tree *,
 		    struct rasa *, struct repo *);
+
+/* Function prototypes for RASA-SET */
+void		 rasa_set_free(struct rasa_set *);
+void		 rasa_set_buffer(struct ibuf *, const struct rasa_set *);
+struct rasa_set	*rasa_set_parse(struct cert **, const char *, int,
+		    const unsigned char *, size_t);
+struct rasa_set	*rasa_set_read(struct ibuf *);
+void		 rasa_set_insert_vrp(char *, struct vrp_rasa_set_tree *,
+		    struct rasa_set *, struct repo *);
 
 #endif /* !RASA_H */
