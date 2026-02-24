@@ -58,6 +58,11 @@ struct rasa_set_member {
 	int		propagation;	/* Propagation scope */
 };
 
+/* Fallback mode for RASA-SET */
+#define RASA_FALLBACK_MODE_IRR_FALLBACK	0	/* Merge RASA with IRR (default) */
+#define RASA_FALLBACK_MODE_IRR_LOCK	1	/* Lock to specific IRR database */
+#define RASA_FALLBACK_MODE_RASA_ONLY	2	/* Use only RASA data */
+
 struct rasa_set {
 	int		valid;		/* Validated */
 	int		talid;		/* TAL ID */
@@ -68,6 +73,7 @@ struct rasa_set {
 	char		**nested_sets;	/* Nested AS-SET names */
 	size_t		num_nested;	/* Number of nested sets */
 	char		*irr_source;	/* IRR source (optional) */
+	int		fallback_mode;	/* Fallback mode (0=irrFallback, 1=irrLock, 2=rasaOnly) */
 	ASN1_BIT_STRING	*flags;		/* Flags (doNotInherit, authoritative) */
 	time_t		signtime;	/* CMS signing time */
 	time_t		expires;	/* Expiration */
@@ -99,6 +105,7 @@ struct vrp_rasa_set {
 	uint32_t	 containing_as;	/* Owning AS */
 	struct rasa_set_member	*members;	/* Member ASes */
 	size_t		 num_members;
+	int		 fallback_mode;	/* Fallback mode */
 	time_t		 expires;
 	int		 talid;
 	unsigned int	 repoid;

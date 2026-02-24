@@ -412,6 +412,7 @@ struct RasaSetContent_st {
 	STACK_OF(ASN1_INTEGER)			*members;	/* Member ASes */
 	STACK_OF(ASN1_UTF8STRING)		*nestedSets;	/* Nested AS-SETs (optional) */
 	ASN1_UTF8STRING	*irrSource;		/* IRR source (optional) */
+	ASN1_INTEGER	*fallbackMode;		/* Fallback mode (optional, default 0) */
 	ASN1_BIT_STRING	*flags;
 	ASN1_GENERALIZEDTIME	*notBefore;
 	ASN1_GENERALIZEDTIME	*notAfter;
@@ -425,6 +426,7 @@ ASN1_SEQUENCE(RasaSetContent) = {
 	ASN1_SEQUENCE_OF(RasaSetContent, members, ASN1_INTEGER),
 	ASN1_SEQUENCE_OF_OPT(RasaSetContent, nestedSets, ASN1_UTF8STRING),
 	ASN1_EXP_OPT(RasaSetContent, irrSource, ASN1_UTF8STRING, 1),
+	ASN1_EXP_OPT(RasaSetContent, fallbackMode, ASN1_INTEGER, 3),
 	ASN1_EXP_OPT(RasaSetContent, flags, ASN1_BIT_STRING, 2),
 	ASN1_SIMPLE(RasaSetContent, notBefore, ASN1_GENERALIZEDTIME),
 	ASN1_SIMPLE(RasaSetContent, notAfter, ASN1_GENERALIZEDTIME)
@@ -550,6 +552,19 @@ rasa_set_parse_econtent(const char *fn, struct rasa_set *rasa_set,
 			err(1, NULL);
 	}
 
+	/* Parse fallback mode (optional, defaults to irrFallback=0) */
+	if (rasa_set_asn1->fallbackMode != NULL) {
+		long mode = ASN1_INTEGER_get(rasa_set_asn1->fallbackMode);
+		if (mode < 0 || mode > 2) {
+			warnx("%s: RASA-SET: invalid fallbackMode %ld, defaulting to irrFallback", fn, mode);
+			rasa_set->fallback_mode = RASA_FALLBACK_MODE_IRR_FALLBACK;
+		} else {
+			rasa_set->fallback_mode = (int)mode;
+		}
+	} else {
+		rasa_set->fallback_mode = RASA_FALLBACK_MODE_IRR_FALLBACK;
+	}
+
 	/* Parse validity times */
 	if (!x509_get_generalized_time(fn, "notBefore",
 	    rasa_set_asn1->notBefore, &rasa_set->notbefore))
@@ -673,6 +688,7 @@ rasa_set_buffer(struct ibuf *b, const struct rasa_set *p)
 		io_str_buffer(b, p->nested_sets[i]);
 
 	io_str_buffer(b, p->irr_source);
+	io_simple_buffer(b, &p->fallback_mode, sizeof(p->fallback_mode));
 	io_simple_buffer(b, &p->signtime, sizeof(p->signtime));
 	io_simple_buffer(b, &p->expires, sizeof(p->expires));
 	io_simple_buffer(b, &p->notbefore, sizeof(p->notbefore));
@@ -720,6 +736,7 @@ rasa_set_read(struct ibuf *b)
 	}
 
 	io_read_str(b, &p->irr_source);
+	io_read_buf(b, &p->fallback_mode, sizeof(p->fallback_mode));
 	io_read_buf(b, &p->signtime, sizeof(p->signtime));
 	io_read_buf(b, &p->expires, sizeof(p->expires));
 	io_read_buf(b, &p->notbefore, sizeof(p->notbefore));
@@ -749,6 +766,7 @@ rasa_set_insert_vrp(char *fn, struct vrp_rasa_set_tree *tree,
 	vr->repoid = repo_id(rp);
 	vr->expires = rasa_set->expires;
 	vr->num_members = rasa_set->num_members;
+	vr->fallback_mode = rasa_set->fallback_mode;
 
 	if (rasa_set->num_members > 0) {
 		vr->members = calloc(rasa_set->num_members, sizeof(vr->members[0]));
