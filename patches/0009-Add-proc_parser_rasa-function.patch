@@ -1,0 +1,50 @@
+--- a/openbsd/src/usr.sbin/rpki-client/parser.c
++++ b/openbsd/src/usr.sbin/rpki-client/parser.c
+@@ -259,6 +259,41 @@ proc_parser_spl(char *file, const unsigned char *der, size_t len,
+ 	return NULL;
+ }
+ 
++/*
++ * Parse and validate a RASA (RPKI AS-SET Authorization).
++ * Returns the rasa on success, NULL on failure.
++ */
++static struct rasa *
++proc_parser_rasa(char *file, const unsigned char *der, size_t len,
++    const struct entity *entp, X509_STORE_CTX *ctx)
++{
++	struct rasa	*rasa;
++	struct cert	*cert = NULL;
++	struct auth	*a;
++	struct crl	*crl;
++	const char	*errstr;
++
++	if ((rasa = rasa_parse(&cert, file, entp->talid, der, len)) == NULL)
++		goto out;
++
++	a = find_issuer(file, entp->certid, cert->aki, entp->mftaki);
++	if (a == NULL)
++		goto out;
++	crl = crl_get(&crls, a);
++
++	if (!valid_x509(file, ctx, cert->x509, a, crl, &errstr)) {
++		warnx("%s: %s", file, errstr);
++		goto out;
++	}
++
++	rasa->talid = a->cert->talid;
++
++	rasa->expires = x509_find_expires(cert->notafter, a, &crls);
++	cert_free(cert);
++
++	return rasa;
++
++ out:
++	rasa_free(rasa);
++	cert_free(cert);
++
++	return NULL;
++}
++
+ /*
+  * Check all files and their hashes in a MFT structure.
+  * Return zero on failure, non-zero on success.

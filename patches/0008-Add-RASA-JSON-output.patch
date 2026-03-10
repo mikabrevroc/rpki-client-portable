@@ -1,0 +1,12 @@
+--- a/openbsd/src/usr.sbin/rpki-client/output-json.c
++++ b/openbsd/src/usr.sbin/rpki-client/output-json.c
+@@ -60,6 +60,9 @@ outputheader_json(struct validation_data *vd, struct stats *st)
+ 	json_do_int("aspas", st->repo_tal_stats.aspas);
+ 	json_do_int("failedaspas", st->repo_tal_stats.aspas_fail);
+ 	json_do_int("invalidaspas", st->repo_tal_stats.aspas_invalid);
++	json_do_int("rasas", st->repo_tal_stats.rasas);
++	json_do_int("failedrasas", st->repo_tal_stats.rasas_fail);
++	json_do_int("invalidrasas", st->repo_tal_stats.rasas_invalid);
+ 	json_do_int("bgpsec_pubkeys", st->repo_tal_stats.brks);
+ 	json_do_int("certificates", st->repo_tal_stats.certs);
+ 	json_do_int("invalidcertificates", st->repo_tal_stats.certs_fail);

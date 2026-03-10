@@ -1,0 +1,117 @@
+--- openbsd/src/usr.sbin/rpki-client/extern.h	2026-02-23 19:20:34
++++ /tmp/extern_h_new.txt	2026-02-23 19:53:32
+@@ -201,6 +201,7 @@
+ 	RTYPE_ASPA,
+ 	RTYPE_TAK,
+ 	RTYPE_SPL,
++	RTYPE_RASA,
+ 	RTYPE_CCR,
+ 	RTYPE_GZ,
+ };
+@@ -375,8 +376,52 @@
+  */
+ RB_HEAD(vap_tree, vap);
+ RB_PROTOTYPE(vap_tree, vap, entry, vapcmp);
++
++/* RASA authorization entry structure */
++struct rasa_entry {
++	char		*asset;		/* AS-SET name */
++	int		propagation;	/* propagation scope (0=unrestricted, 1=directOnly) */
++};
++
++/*
++ * A single RASA (RPKI AS-SET Authorization) record
++ */
++struct rasa {
++	int		 valid;	/* contained in issuer auth */
++	int		 talid;		/* TAL the RASA is chained up to */
++	uint32_t	 asid;		/* authorized AS (if is_asid is true) */
++	char		*asset;		/* authorized AS-SET (if is_asid is false) */
++	int		 is_asid;	/* true if authorizedEntity is ASID */
++	struct rasa_entry *entries;	/* authorized AS-SET entries */
++	size_t		 num_entries;	/* number of entries */
++	time_t		 signtime;	/* CMS signing-time attribute */
++	time_t		 expires;	/* when the signature path expires */
++	time_t		 notbefore;	/* validity start */
++	time_t		 notafter;	/* validity end */
++};
+ 
+ /*
++ * A Validated RASA Payload tree element.
++ */
++struct vrp_rasa {
++	RB_ENTRY(vrp_rasa)	 entry;
++	uint32_t		 asid;		/* authorized AS (if applicable) */
++	char			*asset;		/* authorized AS-SET (if applicable) */
++	int			 is_asid;	/* true if ASID, false if AS-SET */
++	struct rasa_entry	*entries;	/* authorized AS-SET entries */
++	size_t			 num_entries;
++	time_t			 expires;
++	int			 talid;
++	unsigned int		 repoid;
++};
++
++/*
++ * Tree of validated RASA payloads sorted by asid/asset
++ */
++RB_HEAD(vrp_rasa_tree, vrp_rasa);
++RB_PROTOTYPE(vrp_rasa_tree, vrp_rasa, entry, vrp_rasa_cmp);
++
++/*
+  * A single VRP element (including ASID)
+  */
+ struct vrp {
+@@ -690,6 +735,7 @@
+ extern ASN1_OBJECT *aspa_oid;
+ extern ASN1_OBJECT *tak_oid;
+ extern ASN1_OBJECT *spl_oid;
++extern ASN1_OBJECT *rasa_oid;
+ extern ASN1_OBJECT *ccr_oid;
+ 
+ extern int verbose;
+@@ -773,6 +819,14 @@
+ 		    const unsigned char *, size_t);
+ struct aspa	*aspa_read(struct ibuf *);
+ 
++void		 rasa_buffer(struct ibuf *, const struct rasa *);
++void		 rasa_free(struct rasa *);
++void		 rasa_insert_vrp_rasas(char *, struct vrp_rasa_tree *,
++		    struct rasa *, struct repo *);
++struct rasa	*rasa_parse(struct cert **, const char *, int,
++		    const unsigned char *, size_t);
++struct rasa	*rasa_read(struct ibuf *);
++
+ /* crl.c */
+ struct crl	*crl_parse(const char *, const unsigned char *, size_t);
+ struct crl	*crl_get(struct crl_tree *, const struct auth *);
+@@ -1023,12 +1077,29 @@
+ 
+ int	mkpath(const char *);
+ int	mkpathat(int, const char *);
++
++#ifndef RPKI_PATH_TAL_DIR
++#define RPKI_PATH_TAL_DIR	"/etc/rpki"
++#endif
+ 
++#ifndef RPKI_PATH_OUT_DIR
+ #define RPKI_PATH_OUT_DIR	"/var/db/rpki-client"
++#endif
++
++#ifndef RPKI_PATH_BASE_DIR
+ #define RPKI_PATH_BASE_DIR	"/var/cache/rpki-client"
++#endif
+ 
+-#define DEFAULT_SKIPLIST_FILE	"/etc/rpki/skiplist"
++#ifndef RPKI_CLIENT_USER
++#define RPKI_CLIENT_USER	"_rpki-client"
++#endif
+ 
++#ifndef RPKI_RSYNC_CMD
++#define RPKI_RSYNC_CMD		"openrsync"
++#endif
++
++#define DEFAULT_SKIPLIST_FILE	RPKI_PATH_TAL_DIR "/skiplist"
++
+ /* Interval in which random reinitialization to an RRDP snapshot happens. */
+ #define RRDP_RANDOM_REINIT_MAX	12 /* weeks */
+ 
